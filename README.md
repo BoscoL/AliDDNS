@@ -11,7 +11,7 @@
                 access_key_secret=""
         3、最后，执行aliddns.sh脚本，如：
         
-         ./aliddns.sh [OPTION]
+         ./aliddns.sh [OPTION] <String>
          
           Options:
             -d, --domain    域名 (必需参数)
