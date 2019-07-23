@@ -10,11 +10,11 @@
 # Usage:
 #   ./aliddns.sh [OPTION]
 # Options:
-#   -d, --domain    domain name (required)
-#   -h, --host      host, default: @
-#   -t, --type      type, default: A
-#   -v, --value     type, default: IPv4(auto recognition)
-#   -l, --ttl       ttl, default: 600s
+#   -d, --domain    Domain Name (required)
+#   -h, --host      Host, default: @
+#   -t, --type      Type, default: A
+#   -v, --value     Value, default: IPv4(auto recognition)
+#   -l, --ttl       TTL, default: 600s
 # 
 # eg: 
 #   1) ./aliddns.sh -d example.com -h @ -h www 
