@@ -16,7 +16,7 @@
           Options:
             -d, --domain    域名 (必需参数)
             -h, --host      主机记录, 默认为: @
-            -t, --type      记录类型, 默认为: A，候选有：A, AAAA, CNAME, MX,  NS, SRV, CAA, REDIRECT_URL, FORWARD_URL, FORWARD_URL
+            -t, --type      记录类型, 默认为: A，候选有：A, AAAA, CNAME, MX, REDIRECT_URL, FORWARD_URL ...
             -v, --value     记录值, 默认为:自动获取的公网IPv4地址，其他类型可以自由设置
             -l, --ttl       TTL, 默认为: 600s，免费用户固定为600秒，付费用户可以设置其他值。
         
