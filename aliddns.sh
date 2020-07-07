@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # @author Bosco.Liao
-# @version 1.0.0
+# @version 1.1.0
 #
 # AliDDNS:
 # 支持指定域名下解析记录的更新和添加，现用于群晖NAS的DDNS，运行情况稳定。
@@ -222,8 +222,7 @@ updateRecordValue() {
     local data="RecordId=$rid&RR=`symbolEncode "$host"`&Type=$arg_type&Value=$arg_value&TTL=$arg_ttl"
 
     echo -e "::"
-    echo "----- $arg_type record [$host.$arg_domain ] with value [ $arg_value ] is updating. -----"
-    echo -e "========>>"
+    echo -e "Different $arg_type record [$host.$arg_domain ] with value [ $arg_value ] is updating.\n"
 
     local result=`doPost "UpdateDomainRecord" "$data"`
 
@@ -243,10 +242,10 @@ addRecord() {
     local result=""
     for tho in $hosts
     do
-        host="${tho//\"/''}"
+        # host="${tho//\"/''}"
+        host=`echo -n "$tho" | tr -d '"'`
         echo -e "::"
-        echo "----- $arg_type record [$host.$arg_domain ] with value [ $arg_value ] is adding. -----"
-        echo -e "========>>"
+        echo -e "$arg_type record [ $host.$arg_domain ] with value [ $arg_value ] is adding.\n"
         # wrapper request data
         data="DomainName=$arg_domain&RR=`symbolEncode "$host"`&Type=$arg_type&Value=$arg_value&TTL=$arg_ttl"
         result=`doPost "AddDomainRecord" "$data"`
@@ -290,7 +289,8 @@ execDDNS() {
         for ah in ${arg_hosts[@]}
         do
             pos=1
-            host="${ah//\"/''}"
+            # host="${ah//\"/''}"
+            host=`echo -n "$ah" | tr -d '"'`
 
             for rh in ${rhosts[@]}
             do
@@ -462,3 +462,6 @@ fi
 echo -e "Settting Params: {Domain: $arg_domain, Type: $arg_type, Host: [ ${arg_hosts[@]} ], Value: $arg_value, TTL: $arg_ttl} \n"
 # Execute DDNS service
 execDDNS
+
+# end
+echo -e "\nCompleted!!!"
