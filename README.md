@@ -1,6 +1,6 @@
 
     
-        ###本脚本的工作流程是：对比云端解析记录-> 不存在则添加 -> 存在则更新。
+        本脚本的工作流程是：对比云端解析记录-> 不存在则添加 -> 存在则更新。
         
         使用方法：
         1、首先，登录阿里控制台，获取AccessKey（没有则创建）；
@@ -23,7 +23,7 @@
              ./aliddns.sh -d example.com -h @ -h www
              
              --在example.com下，创建或更新两条记录：@、www [ IPv6 ]
-             ./aliddns.sh -d example.com -h @ -h www -t AAAA -v <IPv6公网地址>
+             ./aliddns.sh -d example.com -h @ -h www -t AAAA -v xxxx:xxxx:xxxx:xxxx::xxx
            
              --将所有域名*.example.com都指向二级域名abc.sample.com，同时指定TTL为60秒
              ./aliddns.sh -d example.com -h \* -t CNAME -v abc.sample.com -l 60
