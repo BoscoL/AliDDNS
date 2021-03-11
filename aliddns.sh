@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # @author Bosco.Liao
-# @version 1.1.0
+# @version 1.2.0
 #
 # AliDDNS:
 # 支持指定域名下解析记录的更新和添加，现用于群晖NAS的DDNS，运行情况稳定。
@@ -13,7 +13,7 @@
 #   -d, --domain    Domain Name (required)
 #   -h, --host      Host, default: @
 #   -t, --type      Type, default: A
-#   -v, --value     Value, default: IPv4(auto recognition)
+#   -v, --value     Value, default: IPv4(automatically detect)
 #   -l, --ttl       TTL, default: 600s
 # 
 # eg: 
@@ -90,7 +90,7 @@ getSignature() {
 
     # Hash-SHA1 --> Base64 --> string
     local signature=$(echo -n "$sign_str" | openssl dgst -sha1 -hmac "$access_key_secret&" -binary | openssl base64)
-    signature=`urlEncode $signature` # need to encode
+    signature=`urlEncode $signature` # encoding required.
     echo -n "$signature"
 }
 
@@ -104,7 +104,7 @@ execEncode() {
     while read -n 1 code
     do 
         case $code in
-            [a-zA-Z0-9\.\-\_\~]) result="$result$code";; # not encode
+            [a-zA-Z0-9\.\-\_\~]) result="$result$code";; # don't encoding.
             *) tempc=`printf "%%%02X" "'$code"`
                result="$result$tempc";;
         esac
@@ -219,10 +219,17 @@ getNumText() {
 updateRecordValue() {
     local rid="$1"
     local host="$2"
-    local data="RecordId=$rid&RR=`symbolEncode "$host"`&Type=$arg_type&Value=$arg_value&TTL=$arg_ttl"
+    local data=""
 
     echo -e "::"
     echo -e "Different $arg_type record [$host.$arg_domain ] with value [ $arg_value ] is updating.\n"
+
+    if [ 'AAAA' = $arg_type ] 
+    then
+        data="RecordId=$rid&RR=`symbolEncode "$host"`&Type=$arg_type&Value=`urlEncode "$arg_value"`&TTL=$arg_ttl"
+    else
+        data="RecordId=$rid&RR=`symbolEncode "$host"`&Type=$arg_type&Value=$arg_value&TTL=$arg_ttl"
+    fi
 
     local result=`doPost "UpdateDomainRecord" "$data"`
 
@@ -246,8 +253,15 @@ addRecord() {
         host=`echo -n "$tho" | tr -d '"'`
         echo -e "::"
         echo -e "$arg_type record [ $host.$arg_domain ] with value [ $arg_value ] is adding.\n"
+
         # wrapper request data
-        data="DomainName=$arg_domain&RR=`symbolEncode "$host"`&Type=$arg_type&Value=$arg_value&TTL=$arg_ttl"
+        if [ 'AAAA' = $arg_type ] 
+        then
+            data="DomainName=$arg_domain&RR=`symbolEncode "$host"`&Type=$arg_type&Value=`urlEncode "$arg_value"`&TTL=$arg_ttl"
+        else
+            data="DomainName=$arg_domain&RR=`symbolEncode "$host"`&Type=$arg_type&Value=$arg_value&TTL=$arg_ttl"
+        fi
+
         result=`doPost "AddDomainRecord" "$data"`
 
         if test 200 -ne `getNumText "$result" "HttpStatusCode"`
@@ -304,7 +318,7 @@ execDDNS() {
 
                     case $arg_type in
                         A) #IPv4
-                            if test "$value" = "$extranet_ipv4"
+                            if test "$value" = "$arg_value"
                             then
                                 echo -e "::"
                                 echo -e "Same $arg_type Record: [ $host.$arg_domain ] with ipv4 [ $value ] -- Don't update.\n"
@@ -312,8 +326,8 @@ execDDNS() {
                                 updateRecordValue "$recid" "$host"
                             fi
                             break;;
-                        AAAA) #IPv6: Currently not supported.
-                            if test "$value" = "$extranet_ipv6"
+                        AAAA) #IPv6
+                            if test "$value" = "$arg_value"
                             then
                                 echo -e "::"
                                 echo -e "Same $arg_type Record: [ $host.$arg_domain ] with ipv6 [ $value ] -- Don't update.\n"
@@ -357,7 +371,7 @@ ipv4_api_store=('icanhazip.com' 'whatismyip.akamai.com' 'ip.3322.net')
 readonly ipv4_api_store
 
 extranet_ipv4=`getIpv4 "${ipv4_api_store[*]}"`
-extranet_ipv6="" #Currently not supported.
+extranet_ipv6="" # Automatic detection is not currently supported.
 
 #========================Parse parameters===============================
 #
@@ -369,7 +383,7 @@ arg_domain=""
 arg_hosts=()
 arg_type="A"
 arg_value=""
-arg_ttl=600 # Unit:seconds
+arg_ttl=600 # seconds
 
 getopt_args=`getopt -o d:h:t:v:l: -al domain:,host:,type:,value:,ttl: -- "$@"`
 # Adjust the coordinate
@@ -417,7 +431,7 @@ then
     then
         if test -z "$arg_value"
         then
-            echo "ERROR: Type isn't A or AAAA, unable to get value automatically. Please setting argument: [-v xxx | --value xxx]." 1>&2
+            echo "ERROR: Except for types A and AAAA, other types cannot automatically recognize the record value, please use the option: [-v | --value] to assign the value explicitly." 1>&2
             exit
         fi
     else 
@@ -452,7 +466,7 @@ then
 
     if test -z "$arg_value" 
     then
-        echo "ERROR: Parameter value was not found, probably because the IP recognition failed or the command [-v] was not set." 1>&2
+        echo "ERROR: DNS record value must be set, please use option: [-v | --value] to set it." 1>&2
         exit
     fi
 
