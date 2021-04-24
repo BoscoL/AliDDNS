@@ -2,11 +2,17 @@
     
         本脚本的工作流程是：对比云端解析记录-> 不存在则添加 -> 存在则更新。
         
+        脚本运行依赖：curl、openssl 【注：群晖NAS环境默认已经安装这类工具】
+        
         使用方法：
-        1、首先，登录阿里控制台，获取AccessKey（没有则创建）；
+        1、首先，登录阿里控制台:
+            1-1）进入《云解析DNS》，新增待解析的域名，如：example.com;
+            1-2) 进入《AccessKey 管理》，获取AccessKey（没有则创建）。
+            
         2、然后，打开aliddns.sh脚本，在Setting里设置AccessKey，如下：
                 access_key_id=""
                 access_key_secret=""
+                
         3、最后，执行aliddns.sh脚本，如：
         
          ./aliddns.sh [OPTION] <String>
