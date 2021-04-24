@@ -6,7 +6,7 @@
         
         使用方法：
         1、首先，登录阿里控制台:
-            1-1）进入《云解析DNS》，新增待解析的域名，如：example.com;
+            1-1）进入《云解析DNS》，新增待解析的域名记录，如：example.com;
             1-2) 进入《AccessKey 管理》，获取AccessKey（没有则创建）。
             
         2、然后，打开aliddns.sh脚本，在Setting里设置AccessKey，如下：
