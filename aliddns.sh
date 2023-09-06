@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # @author Bosco.Liao
-# @version 1.2.0
+# @version 1.3.0
 #
 # AliDDNS:
 # 支持指定域名下解析记录的更新和添加，现用于群晖NAS的DDNS，运行情况稳定。
@@ -33,20 +33,19 @@ access_key_secret=""
 #
 #====================================================================
 
-# getIpv4 $ipv4_api_store
-getIpv4() {
-    local apis=($1)
+# getExtranetIp -4|-6 $ipv4/6_api_store
+getExtranetIp() {
+    local apis=($2)
     local index=0
-    if [ $# -eq 2 ]; then
-        index=$2
+    if [ $# -eq 3 ]; then
+        index=$3
     fi
     local api="${apis[$index]}"
-    # echo -e "The external network API currently in use is: $api"
     local max=`expr ${#apis[@]} - 1`
-    local ip=`curl -sL --connect-timeout 3 -m 5 "$api"`
+    local ip=`curl "$1" -sL --connect-timeout 3 -m 5 "$api"`
     if [[ -z "$ip" && $max -gt $index ]]; then
         let index++
-        getIpv4 "${apis[*]}" $index
+        getExtranetIp "$1" "${apis[*]}" $index
     else
         echo -n "$ip"
     fi
@@ -368,10 +367,12 @@ gateway="http://alidns.aliyuncs.com/"
 readonly gateway
 
 ipv4_api_store=('icanhazip.com' 'whatismyip.akamai.com' 'ip.3322.net')
+ipv6_api_store=('6.ipw.cn' 'api6.ipify.org')
 readonly ipv4_api_store
+readonly ipv6_api_store
 
-extranet_ipv4=`getIpv4 "${ipv4_api_store[*]}"`
-extranet_ipv6="" # Automatic detection is not currently supported.
+extranet_ipv4=`getExtranetIp -4 "${ipv4_api_store[*]}"`
+extranet_ipv6=`getExtranetIp -6 "${ipv6_api_store[*]}"`
 
 #========================Parse parameters===============================
 #
@@ -405,10 +406,12 @@ done
 #==========================Service Control==============================
 #
 #=======================================================================
-echo -e "\n============================================================"
+echo -e "\n=========================================================================="
 echo -e "\tCurrent OS: `uname -s` `uname -m` `uname -o` "
 echo -e "\tCurrent Time: `date +'%Y-%m-%d %H:%M:%S'`"
-echo -e "============================================================\n"
+echo -e "\tCurrent External IPv4: $extranet_ipv4 "
+echo -e "\tCurrent External IPv6: $extranet_ipv6 "
+echo -e "==========================================================================\n"
 
 # Checks aliyun api Access Key ID and Access Key Secret.
 if test -z "$access_key_id" -o -z "$access_key_secret"
@@ -454,11 +457,11 @@ if test -z "$arg_value"
 then
     case "$arg_type" in
         A) 
-            echo -e "External IPv4: $extranet_ipv4 \n"
+            echo -e "Note: Currently using IPv4 for DDNS!!!\n"
             arg_value="$extranet_ipv4"
             ;;
         AAAA)
-            echo -e "External IPv6: $extranet_ipv6 \n"
+            echo -e "Note: Currently using IPv6 for DDNS!!!\n"
             arg_value="$extranet_ipv6"
             ;;
         *) break;;

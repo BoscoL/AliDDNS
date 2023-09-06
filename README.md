@@ -1,5 +1,5 @@
 
-    
+​    
         本脚本的工作流程是：对比云端解析记录-> 不存在则添加 -> 存在则更新。
         
         脚本运行依赖：curl、openssl （注：群晖NAS环境默认自带这些工具，无需安装！）
@@ -29,8 +29,8 @@
              ./aliddns.sh -d example.com -h @ -h www
              
              --在example.com下，创建或更新两条记录：@、www [ IPv6 ]
-             ./aliddns.sh -d example.com -h @ -h www -t AAAA -v xxxx:xxxx:xxxx:xxxx::xxx
+             ./aliddns.sh -d example.com -h @ -h www -t AAAA
            
              --将所有域名*.example.com都指向二级域名abc.sample.com，同时指定TTL为60秒
              ./aliddns.sh -d example.com -h \* -t CNAME -v abc.sample.com -l 60
-           
+
