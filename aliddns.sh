@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # @author Bosco.Liao
-# @version 1.3.0
+# @version 1.4.0
 #
 # AliDDNS:
 # 支持指定域名下解析记录的更新和添加，现用于群晖NAS的DDNS，运行情况稳定。
@@ -15,12 +15,14 @@
 #   -t, --type      Type, default: A
 #   -v, --value     Value, default: IPv4(automatically detect)
 #   -l, --ttl       TTL, default: 600s
+#   -m, --mac       The MAC address of the neighboring machine.
 # 
 # eg: 
 #   1) ./aliddns.sh -d example.com -h @ -h www 
 #   
 #   2) ./aliddns.sh -d example.com -h \* -t CNAME -v abc.sample.com -l 60
 #
+#   3) ./aliddns.sh -d example.com -h @ -t AAAA -m <MAC Address>
 
 #==============================Settings===============================
 #
@@ -374,19 +376,23 @@ readonly ipv6_api_store
 extranet_ipv4=`getExtranetIp -4 "${ipv4_api_store[*]}"`
 extranet_ipv6=`getExtranetIp -6 "${ipv6_api_store[*]}"`
 
+ipv4_remark=""
+ipv6_remark=""
+
 #========================Parse parameters===============================
 #
 #=======================================================================
-usage_tips="Argument Setting Style: \n-d  [--domain (required)]; \n-h  [--host]; \n-t  [--type]; \n-v  [--value]; \n-l  [--ttl]."
+usage_tips="Argument Setting Style: \n-d  [--domain (required)]; \n-h  [--host]; \n-t  [--type]; \n-v  [--value]; \n-l  [--ttl]; \n-m  [--mac]  The MAC address of the neighboring machine."
 readonly usage_tips
 
 arg_domain=""
 arg_hosts=()
 arg_type="A"
 arg_value=""
-arg_ttl=600 # seconds
+arg_ttl=600 # Seconds
+arg_mac="" # The MAC address of the neighboring machine.
 
-getopt_args=`getopt -o d:h:t:v:l: -al domain:,host:,type:,value:,ttl: -- "$@"`
+getopt_args=`getopt -o d:h:t:v:l:m: -al domain:,host:,type:,value:,ttl:,mac: -- "$@"`
 # Adjust the coordinate
 eval set -- "$getopt_args"
 
@@ -398,6 +404,7 @@ do
         -t|--type) arg_type=`echo "$2" | tr 'a-z' 'A-Z'`; shift 2;;
         -v|--value) arg_value=$2; shift 2;;
         -l|--ttl) arg_ttl=$2; shift 2;;
+        -m|--mac) arg_mac=$2; shift 2;;
         --) break;;
         *) echo -e "Error with [$1, $2], Please check it.\n$usage_tips" 1>&2; exit;;
     esac
@@ -406,12 +413,10 @@ done
 #==========================Service Control==============================
 #
 #=======================================================================
-echo -e "\n=========================================================================="
+echo -e "\n===================================================="
 echo -e "\tCurrent OS: `uname -s` `uname -m` `uname -o` "
 echo -e "\tCurrent Time: `date +'%Y-%m-%d %H:%M:%S'`"
-echo -e "\tCurrent External IPv4: $extranet_ipv4 "
-echo -e "\tCurrent External IPv6: $extranet_ipv6 "
-echo -e "==========================================================================\n"
+echo -e "====================================================\n"
 
 # Checks aliyun api Access Key ID and Access Key Secret.
 if test -z "$access_key_id" -o -z "$access_key_secret"
@@ -446,38 +451,61 @@ fi
 # Default host is '@'.
 if test 0 -eq ${#arg_hosts[@]}
 then
-    echo -e "Parameter[ Host ] was not found. Setting default host: '@'.\n"
+    echo -e "The parameter[ Host ] was not found. Default host: @. \n"
     arg_hosts=('"@"')
 else
     arg_hosts=(`echo -n "${arg_hosts[*]}" | tr 'A-Z' 'a-z'`) # convert to lowercase
 fi
 
-# Default value is IPv4 address.
+# If the parameter[ value ] is not set, will be obtained automatically.
 if test -z "$arg_value"
 then
     case "$arg_type" in
         A) 
-            echo -e "Note: Currently using IPv4 for DDNS!!!\n"
+            echo -e "Note: Currently using IPv4 for DDNS!!! \n"
             arg_value="$extranet_ipv4"
             ;;
         AAAA)
-            echo -e "Note: Currently using IPv6 for DDNS!!!\n"
-            arg_value="$extranet_ipv6"
+            echo -e "Note: Currently using IPv6 for DDNS!!! \n"
+
+            # check neighbor machine???
+            if [[ -z $arg_mac || $(ip link | grep -i "$arg_mac" | wc -c) -gt 0 ]]
+            then 
+                echo -e "Note: The MAC address of this machine!!! \n"
+                arg_value="$extranet_ipv6"
+            else 
+                echo -e "Note: The MAC address of the neighboring machine!!! \n"
+                neighbor_ipv6=`ip -6 neigh | awk 'BEGIN{IGNORECASE=1} $1 !~ /fe80::/ && /'"$arg_mac"'/{print $1}' | head -n 1`
+                extranet_ipv6="$neighbor_ipv6"
+                arg_value="$neighbor_ipv6"
+                ipv6_remark="[neighbor]"
+            fi
             ;;
         *) break;;
     esac
 
     if test -z "$arg_value" 
     then
-        echo "ERROR: DNS record value must be set, please use option: [-v | --value] to set it." 1>&2
+        echo "ERROR: The DNS record value cannot be obtained automatically, but it is required. Please set it via option: [-v | --value]." 1>&2
         exit
     fi
 
 fi
 
-# Print all setting params.
-echo -e "Settting Params: {Domain: $arg_domain, Type: $arg_type, Host: [ ${arg_hosts[@]} ], Value: $arg_value, TTL: $arg_ttl} \n"
+###################################################
+# Print all final args.
+###################################################
+
+echo -e "======================Final Args====================\n"
+
+echo -e "External IPv4: $extranet_ipv4 \n"
+echo -e "External IPv6: $extranet_ipv6 $ipv6_remark \n"
+echo -e "The settting arguments: {Domain: $arg_domain, Type: $arg_type, Host: [ ${arg_hosts[@]} ], Value: $arg_value, TTL: $arg_ttl} \n"
+
+echo -e "======================!!!\n"
+
 # Execute DDNS service
+echo -e "DDNS Service executing. \n"
 execDDNS
 
 # end
